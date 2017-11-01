@@ -1,6 +1,6 @@
 {
   "name": "transfer-stats",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Track download/upload and provide transfer stats",
   "license": "MIT",
   "repository": "github:DaveJ/transfer-stats",
