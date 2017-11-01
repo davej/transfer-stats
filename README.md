@@ -1,4 +1,5 @@
-# transfer-stats
+# transfer-stats [![Build Status](https://travis-ci.org/davej/transfer-stats.svg?branch=master)](https://travis-ci.org/davej/transfer-stats)
+
 
 > Track download/upload and provide transfer stats
 
