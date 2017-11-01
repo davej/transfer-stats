@@ -14,6 +14,7 @@ $ yarn add transfer-stats
 
 ```js
 const Transfer = require('transfer-stats');
+const { relativeTimeThreshold, duration } = require('moment')
 
 const fileSize = 10000; // Filesize (perhaps from content-length header).
 
@@ -29,6 +30,9 @@ transfer.start();
 setTimeout(() => {
     // 100 bytes have been transferred
     transfer.updateBytes(100);
+
+    console.log(`${duration(transfer.stats.msRemaining).humanize()} remaining`);
+    // => 30 seconds remaining
 
     console.log(transfer.stats);
     // =>
