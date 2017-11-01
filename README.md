@@ -18,7 +18,7 @@ const Transfer = require('transfer-stats');
 const fileSize = 10000; // Filesize (perhaps from content-length header).
 
 const transfer = new Transfer({
-    bytesTotal: contentLength
+    bytesTotal: fileSize
     /*
      * bytesTotal is not required but many stats will 
      * be unavailable if it is not specified
