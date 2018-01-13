@@ -75,7 +75,9 @@ module.exports = class Transfer {
 
       get bytesPerSecond(): number {
         const { bpsLog } = klass;
-        return bpsLog.mean();
+        const mean = bpsLog.mean();
+        if (mean < 0.0001) return 0;
+        return mean;
       },
 
       get bytesPerSecondSharp(): number {
@@ -110,6 +112,7 @@ module.exports = class Transfer {
     const currentTime = new Date().getTime();
     const lastUpdatedDateTime = this.updatedDateTime || new Date().getTime();
     const updatedDateTime = currentTime;
+
     const bps =
       (newBytesCompleted - lastBytesCompleted) /
       (updatedDateTime - lastUpdatedDateTime) *
