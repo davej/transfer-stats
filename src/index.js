@@ -2,21 +2,30 @@
 /**
  * Track download/upload and provide transfer stats
  */
+
+const FixedArray = require('fixed-array');
+
 module.exports = class Transfer {
+  bpsLog: FixedArray;
   bytesTotal: ?number;
+  lastBytesCompleted: number;
   bytesCompleted: number;
   started: boolean;
   finished: boolean;
   startDateTime: ?number;
+  updatedDateTime: ?number;
+  lastUpdatedDateTime: ?number;
   endDateTime: ?number;
   stats: {};
 
   constructor(options: { bytesTotal: number, bytesCompleted: number }) {
+    this.bpsLog = FixedArray(5);
     const settings = typeof options === 'object' ? options : {};
     this.bytesTotal =
       typeof settings.bytesTotal === 'number' ? settings.bytesTotal : null;
     this.bytesCompleted =
       typeof settings.bytesCompleted === 'number' ? settings.bytesCompleted : 0;
+    this.lastBytesCompleted = this.bytesCompleted;
     this.startDateTime = null;
     this.started = false;
     this.finished = false;
@@ -65,8 +74,15 @@ module.exports = class Transfer {
       },
 
       get bytesPerSecond(): number {
-        const { bytesCompleted, msElapsed } = this;
-        return bytesCompleted / msElapsed * 1000;
+        const { bpsLog } = klass;
+        return bpsLog.mean();
+      },
+
+      get bytesPerSecondSharp(): number {
+        // Get's the exact BPS of the last update rather than the mean of the last 5
+        const { bpsLog } = klass;
+        const bpsArr = bpsLog.values();
+        return bpsArr[bpsArr.length - 1];
       },
 
       get msTotal(): ?number {
@@ -84,18 +100,36 @@ module.exports = class Transfer {
     };
   }
 
-  updateBytes(bytes: number) {
+  updateBytes(newBytesCompleted: number) {
     if (!this.started) {
       throw new Error(
         'Transfer not started. Call start() before you call updateBytes()',
       );
     }
-    this.bytesCompleted = bytes;
+    const lastBytesCompleted = this.bytesCompleted || 0;
+    const currentTime = new Date().getTime();
+    const lastUpdatedDateTime = this.updatedDateTime || new Date().getTime();
+    const updatedDateTime = currentTime;
+    const bps =
+      (newBytesCompleted - lastBytesCompleted) /
+      (updatedDateTime - lastUpdatedDateTime) *
+      1000;
+
+    this.bpsLog.push((bps: number));
+    this.lastUpdatedDateTime = lastUpdatedDateTime;
+    this.updatedDateTime = updatedDateTime;
+    this.bytesCompleted = newBytesCompleted;
+    this.lastBytesCompleted = lastBytesCompleted;
   }
 
   start() {
     this.started = true;
-    if (!this.startDateTime) this.startDateTime = new Date().getTime();
+    if (!this.startDateTime) {
+      const currentTime = new Date().getTime();
+      this.startDateTime = currentTime;
+      this.lastUpdatedDateTime = currentTime;
+      this.updatedDateTime = currentTime;
+    }
   }
 
   finish() {
