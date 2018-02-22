@@ -27,6 +27,9 @@ const transfer = new Transfer({
 });
 transfer.start();
 
+// Once transfer is started you can also call `transfer.pause()`
+// and `transfer.resume()` to pause/resume the transfer
+
 setTimeout(() => {
     // 100 bytes have been transferred
     transfer.updateBytes(100);

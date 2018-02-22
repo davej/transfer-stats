@@ -8,8 +8,10 @@ let transfer2;
 let elapsedTime;
 elapsedTime = 0;
 
+const delayMs = 300;
+
 const delay = () => {
-  elapsedTime += 300;
+  elapsedTime += delayMs;
   return new Promise((resolve: void => void) => setTimeout(resolve, 300));
 };
 
@@ -157,6 +159,7 @@ describe('simple transfer flow with content-length', () => {
     transfer2.updateBytes(100);
 
     expect(transfer2.stats.started).toBe(true);
+    expect(transfer2.stats.paused).toBe(false);
     expect(transfer2.stats.finished).toBe(false);
     expect(transfer2.stats.bytesCompleted).toBe(100);
     expect(transfer2.stats.bytesRemaining).toBe(9900);
@@ -171,5 +174,48 @@ describe('simple transfer flow with content-length', () => {
     expect(transfer2.stats.msRemaining).toBe(msRemaining);
 
     return delay();
+  });
+
+  it('should handle pause', () => {
+    transfer2.updateBytes(150);
+    transfer2.pause();
+
+    expect(transfer2.stats.started).toBe(true);
+    expect(transfer2.stats.paused).toBe(true);
+    expect(transfer2.stats.finished).toBe(false);
+    expect(transfer2.stats.bytesCompleted).toBe(150);
+    expect(transfer2.stats.bytesRemaining).toBe(9850);
+    expect(transfer2.stats.bytesTotal).toBe(10000);
+    expect(transfer2.stats.percentage).toBe(0.015);
+    expect(transfer2.stats.msElapsed).toBeWithin20PercentOf(elapsedTime);
+    expect(isNaN(transfer2.stats.bytesPerSecond)).toBe(true);
+    expect(isNaN(transfer2.stats.msTotal)).toBe(true);
+    expect(isNaN(transfer2.stats.msRemaining)).toBe(true);
+
+    return delay();
+  });
+
+  it('should handle resume', () => {
+    transfer2.resume();
+    return delay().then(() => {
+      transfer2.updateBytes(400);
+
+      expect(transfer2.stats.started).toBe(true);
+      expect(transfer2.stats.paused).toBe(false);
+      expect(transfer2.stats.finished).toBe(false);
+      expect(transfer2.stats.bytesCompleted).toBe(400);
+      expect(transfer2.stats.bytesRemaining).toBe(9600);
+      expect(transfer2.stats.bytesTotal).toBe(10000);
+      expect(transfer2.stats.percentage).toBe(0.04);
+      expect(transfer2.stats.msElapsed).toBeWithin20PercentOf(
+        elapsedTime - delayMs,
+      );
+      const bps = 833; // ((400-150) = 250B) / 300MS * 1000;
+      expect(transfer2.stats.bytesPerSecond).toBeWithin20PercentOf(bps);
+      const ms = 12004; // 10000B / 333BPS * 1000;
+      expect(transfer2.stats.msTotal).toBeWithin20PercentOf(ms);
+      const msRemaining = 12004 - 1200;
+      expect(transfer2.stats.msRemaining).toBeWithin20PercentOf(msRemaining);
+    });
   });
 });

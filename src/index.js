@@ -11,10 +11,13 @@ module.exports = class Transfer {
   lastBytesCompleted: number;
   bytesCompleted: number;
   started: boolean;
+  paused: boolean;
   finished: boolean;
   startDateTime: ?number;
   updatedDateTime: ?number;
   lastUpdatedDateTime: ?number;
+  pausedStartDateTime: ?number;
+  pausedTotalTime: number;
   endDateTime: ?number;
   stats: {};
 
@@ -27,13 +30,18 @@ module.exports = class Transfer {
       typeof settings.bytesCompleted === 'number' ? settings.bytesCompleted : 0;
     this.lastBytesCompleted = this.bytesCompleted;
     this.startDateTime = null;
+    this.pausedTotalTime = 0;
     this.started = false;
     this.finished = false;
+    this.paused = false;
     const klass = this;
 
     this.stats = {
       get started(): boolean {
         return klass.started;
+      },
+      get paused(): boolean {
+        return klass.paused;
       },
       get finished(): boolean {
         return klass.finished;
@@ -70,7 +78,7 @@ module.exports = class Transfer {
         const { startDateTime } = this;
         if (!startDateTime) return 0;
         const currentDateTime: number = new Date().getTime();
-        return currentDateTime - startDateTime;
+        return currentDateTime - klass.pausedTotalTime - startDateTime;
       },
 
       get bytesPerSecond(): number {
@@ -108,21 +116,24 @@ module.exports = class Transfer {
         'Transfer not started. Call start() before you call updateBytes()',
       );
     }
-    const lastBytesCompleted = this.bytesCompleted || 0;
-    const currentTime = new Date().getTime();
-    const lastUpdatedDateTime = this.updatedDateTime || new Date().getTime();
-    const updatedDateTime = currentTime;
+    if (!this.paused) {
+      const lastBytesCompleted = this.bytesCompleted || 0;
+      const currentTime = new Date().getTime();
+      const lastUpdatedDateTime = this.updatedDateTime || new Date().getTime();
+      const updatedDateTime = currentTime;
 
-    const bps =
-      (newBytesCompleted - lastBytesCompleted) /
-      (updatedDateTime - lastUpdatedDateTime) *
-      1000;
+      const bps =
+        (newBytesCompleted - lastBytesCompleted) /
+        (updatedDateTime - lastUpdatedDateTime) *
+        1000;
 
-    this.bpsLog.push((bps: number));
-    this.lastUpdatedDateTime = lastUpdatedDateTime;
-    this.updatedDateTime = updatedDateTime;
+      this.bpsLog.push((bps: number));
+      this.lastUpdatedDateTime = lastUpdatedDateTime;
+      this.updatedDateTime = updatedDateTime;
+      this.lastBytesCompleted = lastBytesCompleted;
+    }
+
     this.bytesCompleted = newBytesCompleted;
-    this.lastBytesCompleted = lastBytesCompleted;
   }
 
   start() {
@@ -133,6 +144,25 @@ module.exports = class Transfer {
       this.lastUpdatedDateTime = currentTime;
       this.updatedDateTime = currentTime;
     }
+  }
+
+  pause() {
+    const { paused } = this;
+    if (paused) return;
+    const currentTime = new Date().getTime();
+    this.pausedStartDateTime = currentTime;
+    this.bpsLog = FixedArray(5);
+    this.paused = true;
+  }
+
+  resume() {
+    const { pausedStartDateTime, pausedTotalTime, paused } = this;
+    if (!paused) return;
+    const currentTime = new Date().getTime();
+    const msPauseDuration = currentTime - (pausedStartDateTime || 0);
+    this.pausedTotalTime = pausedTotalTime + msPauseDuration;
+    this.updatedDateTime = currentTime;
+    this.paused = false;
   }
 
   finish() {
